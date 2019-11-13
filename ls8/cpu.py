@@ -9,22 +9,51 @@ class CPU:
         self.ram = [0b00000000] * 256
         self.register = [0] * 8
         self.pc = 0
+        self.sp = 7
+        self.register[self.sp] = 0xf4  
         self.instruction = {
             "0010": self.ldi,
             "0111": self.prn,
             "0001": self.hlt,
-            
+            "0101": self.push,
+            "0110": self.pop
         }
         self.instruction_alu = {
             "0010": self.mul
         }
 
     def ram_read(self, address):
-        #return value stored
         return self.ram[address]
     
     def ram_write(self, value, address):
         self.ram[address] = value
+
+    def ldi(self, opA, opB):
+        self.register[opA] = opB
+        self.pc += 1
+
+    def prn(self, opA):
+        print(self.register[opA])
+        self.pc += 1
+
+    def hlt(self):
+        exit()
+    
+    def mul(self, opA, opB):
+        print(self.alu("MUL", opA, opB))
+        self.pc += 1
+    
+    def push(self, number):
+        self.register[self.sp] -= 1  # decrement sp
+        reg_val = self.register[number] # get value from register number
+        self.ram[self.register[self.sp]] = reg_val  # copy reg value into memory at address SP
+        self.pc += 1
+    
+    def pop(self, register):
+        val = self.ram[self.register[self.sp]] # copy value from the memory
+        self.register[register] = val  # copy val from memory at SP into register
+        self.register[self.sp] += 1  # increment SP
+        self.pc += 1
 
     def load(self, program):
         """Load a program into ram."""
@@ -39,24 +68,6 @@ class CPU:
                     continue
                 self.ram[address] = int(line, 2)
                 address += 1
-                # print("line: ", line)
-        # print(self.ram)
-        
-        # For now, we've just hardcoded a program:
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010, # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111, # PRN R0
-        #     0b00000000,
-        #     0b00000001, # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
-
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -91,19 +102,14 @@ class CPU:
     def run(self):
         while True:
             ir = self.ram[self.pc]
-            # print("pc: ", self.pc)
             byte = bin(ir)[2:].zfill(8)
-            # print("byte ", byte)
             deconstruct = "0b" + byte
-            # print("deconstruct ", deconstruct)
             aa = deconstruct[2:4]
             b = deconstruct[4:5]
             c = deconstruct[5:6]
             dddd = deconstruct[6:]
             opA = None
             opB = None
-
-            # print("aa", aa)
 
             if aa == "01":
                 self.pc += 1
@@ -113,10 +119,6 @@ class CPU:
                 opA = self.ram[self.pc]
                 self.pc += 1
                 opB = self.ram[self.pc]
-            # print("opa: ", opA)
-            # print("opb: ", opB)
-            # print("dddd: ", dddd)
-
             if b == "0":
                 if opA is not None and opB is not None:
                     self.instruction[dddd](opA, opB)
@@ -136,18 +138,3 @@ class CPU:
                 else:
                     self.instruction_alu[dddd]()
 
-
-    def ldi(self, opA, opB):
-        self.register[opA] = opB
-        self.pc += 1
-
-    def prn(self, opA):
-        print(self.register[opA])
-        self.pc += 1
-
-    def hlt(self):
-        exit()
-    
-    def mul(self, opA, opB):
-        print(self.alu("MUL", opA, opB))
-        self.pc += 1
